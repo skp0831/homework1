@@ -11,7 +11,8 @@
 
 #define MAC_ADDR_LEN    6
 
-typedef struct _ethernet_HEADER
+		//	함수
+typedef struct _ethernet_HEADER		//ethernet 헤더 구조체
 
 {
 
@@ -23,7 +24,7 @@ typedef struct _ethernet_HEADER
 
 }ethernet_HEADER, *Pethernet_HEADER;
 
-typedef struct _IP_HEADER
+typedef struct _IP_HEADER		//IP 헤더 구조체
 
 {
 	u_int8_t	ip_headerlengthversion;      /* header length + version */
@@ -50,7 +51,7 @@ typedef struct _IP_HEADER
 
 }IP_HEADER, *PIP_HEADER;
 
-typedef struct _TCP_HEADER
+typedef struct _TCP_HEADER		//TCP 헤더 구조체
 {
 	u_int16_t TCP_src_port;       /* source port */
 	u_int16_t TCP_dest_port;       /* destination port */
@@ -81,18 +82,18 @@ typedef struct _TCP_HEADER
 }TCP_HEADER, *PTCP_HEADER;
 
 
-//-- 함수
-void check_ethernet();
-void ViewMac(unsigned char *mac);
-void check_IP();
-void check_TCP();
-void check_data();
-BOOL initpcap(); // initpcap() - 캡처 장치를 초기화 시킨다.
+		//	함수
+void check_ethernet();		// 이더넷 체크
+void ViewMac(unsigned char *mac);		//이더넷 맥 주소 체크
+void check_IP();		//IP 체크
+void check_TCP();		//TCP 체크
+void check_data();		//data 체크
+BOOL initpcap();		// initpcap() - 캡처 장치 초기화
 
 
 
 
-				 //전역 변수
+		//	전역 변수
 
 pcap_t				*adhandle;
 struct pcap_pkthdr	*header;
@@ -101,50 +102,43 @@ u_char				tcpdata;
 
 
 
-
 int main()
 
 {
 
-	if (initpcap() == FALSE)	return 1;
-
-
+	if (initpcap() == FALSE)	return 1;		//캡처 장치 초기화
 
 	int res;
 	int cnt = 0;
 
-	// 패킷을 캡처 한다
-
-	while ((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0)
+	while ((res = pcap_next_ex(adhandle, &header, &pkt)) >= 0)		//패킷 캡쳐
 
 	{
 
-		// 패킷 크기가 0 이면 아무런 행동을 취하지 않는다.
+	
 
 
-		if (res == 0) continue;
+		if (res == 0) continue;  // 패킷이 없을 경우 BACK
 		printf("\n\n■■■■■■■■■■■■■■■■■■■■■■■■■■■■ Packet No : %d ■■■\n", cnt);
 
 		cnt++;
 
-		check_ethernet();
+		check_ethernet();  // ethernet 체크
 
-		Pethernet_HEADER eh = (Pethernet_HEADER)((UCHAR *)pkt);
+		Pethernet_HEADER eh = (Pethernet_HEADER)((UCHAR *)pkt);		// 패킷에서 ethernet header 추출
 
-		if (ntohs(eh->ethernet_protocol) != 0x800) continue;
+		if (ntohs(eh->ethernet_protocol) != 0x800) continue;		// IP가 아닌경우 BACK
 
 
-		// 패킷에 ip header를 추출한다. (pkt + ethernet size)
+		check_IP();		// IP 체크
 
-		check_IP();
+		PIP_HEADER ih = (PIP_HEADER)((UCHAR *)pkt + 14);		// 패킷에서 IP header 추출(pkt + ethernet size)
 
-		PIP_HEADER ih = (PIP_HEADER)((UCHAR *)pkt + 14);
+		if (ih->ip_protocol != 6) continue;		// TCP가 아닌경우 BACK
 
-		if (ih->ip_protocol != 6) continue;
+		check_TCP();		// TCP 체크
 
-		check_TCP();
-
-		check_data();
+		check_data();		// DATA 체크
 	}
 
 	return 0;
@@ -156,16 +150,13 @@ int main()
 
 
 
-BOOL initpcap()
+BOOL initpcap()		//캡처 장치 찾기 및 초기화
 
 {
 
-	pcap_if_t *alldevs;
+	pcap_if_t *alldevs;		//장치 변수
 
-	char errbuf[256];
-
-
-
+	char errbuf[256];		//버퍼
 
 	bpf_u_int32 NetMask;
 
@@ -182,10 +173,7 @@ BOOL initpcap()
 
 
 
-
-	// 로컬에서 장치 목록을 검사합니다.
-
-	if (pcap_findalldevs(&alldevs, errbuf) == -1)
+	if (pcap_findalldevs(&alldevs, errbuf) == -1)		//장치 목록 검사
 
 	{
 
@@ -197,21 +185,11 @@ BOOL initpcap()
 
 
 
-
-	// 선택된 어탭터로 점프 합니다. 보통 마지막이 사용하는 네트워크 카드가 되지만
-
-	// 무선인터넷이나 네트워크 카드를 2개 이상 사용한다면 사용자가 선택 할 수 있도록
-
-	// 수정되어야 합니다.
-
-	for (d = alldevs; d->next != NULL; d = d->next);
+	for (d = alldevs; d->next != NULL; d = d->next);		// 장치를 찾을때 까지 검색
 
 
 
-
-	// 네트워크 카드 출력
-
-	printf("!] 네트워크 카드 명 [ %s ] \n", d->description);
+	printf("!] 네트워크 카드 명 [ %s ] \n", d->description);		// 네트워크 카드명 출력
 
 
 
@@ -289,19 +267,19 @@ BOOL initpcap()
 
 }
 
-void check_ethernet()
+void check_ethernet()		//ethernet 체크
 {
-	Pethernet_HEADER eh = (Pethernet_HEADER)((UCHAR *)pkt);
+	Pethernet_HEADER eh = (Pethernet_HEADER)((UCHAR *)pkt);		//패킷에서 ethernet header 추출
 
 	printf("----------ethernet_Header----------------------------\n");
 	printf(" DEST MAC : ");
-	ViewMac(eh->dest_mac);
+	ViewMac(eh->dest_mac);		// mac 주소 출력
 
 	printf("\n  SRC MAC : ");
-	ViewMac(eh->src_mac);
+	ViewMac(eh->src_mac);		// mac 주소 출력
 	printf("\n     ");
 
-	switch (ntohs(eh->ethernet_protocol))
+	switch (ntohs(eh->ethernet_protocol))		// 프로토콜 분석 및 출력
 
 	{
 
@@ -321,7 +299,7 @@ void check_ethernet()
 	}
 };
 
-void ViewMac(unsigned char *mac)
+void ViewMac(unsigned char *mac)	//MAC 주소 출력 함수
 
 {
 
@@ -337,29 +315,43 @@ void ViewMac(unsigned char *mac)
 
 }
 
-void check_IP()
+void check_IP()		//IP 체크
 {
 	IN_ADDR addr;
-	IP_HEADER * ih = (IP_HEADER *)(pkt + 14);
+
+	/*IN_ADDR 구조체
+	struct in_addr{
+		union {
+			struct {
+				unsigned char s_b1,
+							  s_b2,
+							  s_b3,
+							  s_b4;
+			} S_un_b;
+			struct {
+				unsigned short s_w1,
+							   s_w2;
+			} S_um_w;
+			unsigned long S_addr;
+		} S_un;
+	};										*/
 
 
+	IP_HEADER * ih = (IP_HEADER *)(pkt + 14);		// 패킷에서 IP header 추출(pkt + ethernet size)
 
 	printf("-------------IP_Header-------------------------------\n");
 
-	addr.s_addr = ih->dest_ip;
+	addr.s_addr = ih->dest_ip;		//IP header에서 dest_IP 추출 
 
-	printf(" DEST IP : %s\n", inet_ntoa(addr));
+	printf(" DEST IP : %s\n", inet_ntoa(addr));		// 32비트 값을 닷-십진법의 주소값으로 변환 후 출력
 
-	addr.s_addr = ih->src_ip;
+	addr.s_addr = ih->src_ip;		//IP header에서 src_IP 추출 
 
-	printf("  SRC IP : %s", inet_ntoa(addr));
+	printf("  SRC IP : %s", inet_ntoa(addr));		// 32비트 값을 닷-십진법의 주소값으로 변환 후 출력
 	printf("\n    ");
 
 
-
-	// 프로토콜을 검색
-
-	switch (ih->ip_protocol)
+	switch (ih->ip_protocol)		// 프로토콜 분석 및 출력
 
 	{
 
@@ -371,24 +363,22 @@ void check_IP()
 
 
 	default:
-		printf("Tpye : Unkown[%d] \n", ih->ip_protocol);
 
+		printf("Tpye : Unkown[%d] \n", ih->ip_protocol);
 
 		break;
 
 	}
 };
 
-void check_TCP()
+void check_TCP()		//TCP 체크
 {
 
-	TCP_HEADER * th = (TCP_HEADER *)(pkt + 14 + 20);
+	TCP_HEADER * th = (TCP_HEADER *)(pkt + 14 + 20);		// 패킷에서 TCP header 추출(pkt + ethernet size(14) + IP size(20))
 
 	printf("-------------TCP_Header------------------------------\n");
 
-
-	printf(" DEST PORT : %d\n", ntohs(th->TCP_dest_port));
-
+	printf(" DEST PORT : %d\n", ntohs(th->TCP_dest_port));		//16비트의 네트워크 바이트 오더를 호스트 바이트 오더로 변환후 출력(빅-인디언 -> 리틀-인디언)
 
 	printf("  SRC PORT : %d", ntohs(th->TCP_src_port));
 
@@ -396,11 +386,12 @@ void check_TCP()
 
 }
 
-void check_data()
+void check_data()		//DATA 체크
 {
 	printf("\n-------------TCP_Data--------------------------------\n data : ");
 
-	if (*(pkt + 14 + 20 + 20) == 0) {
+	if (*(pkt + 14 + 20 + 20) == 0)		// 패킷에서 DATA 부분(pkt + ethernet size(14) + IP size(20) + TCP size(20))이 비어있다면 null 출력 및 back
+	{
 		printf("Null");
 		return;
 	}
@@ -409,7 +400,7 @@ void check_data()
 
 	int i = 0;
 
-	while ((tcpdata = *(pkt + 14 + 20 + 20 + i)) != 0)
+	while ((tcpdata = *(pkt + 14 + 20 + 20 + i)) != 0)		//DATA 부분 헥사값으로 출력	
 	{
 		i++;
 		printf("%0X", tcpdata);
